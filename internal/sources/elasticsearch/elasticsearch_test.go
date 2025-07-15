@@ -40,8 +40,6 @@ sources:
     kind: elasticsearch
     addresses:
       - http://localhost:9200
-    username: user
-    password: pass
     apikey: somekey
 `,
 
@@ -50,8 +48,6 @@ sources:
 					Name:      "my-es-instance",
 					Kind:      elasticsearch.SourceKind,
 					Addresses: []string{"http://localhost:9200"},
-					Username:  "user",
-					Password:  "pass",
 					APIKey:    "somekey",
 				},
 			},

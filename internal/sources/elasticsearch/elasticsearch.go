@@ -47,8 +47,6 @@ type Config struct {
 	Name      string   `yaml:"name" validate:"required"`
 	Kind      string   `yaml:"kind" validate:"required"`
 	Addresses []string `yaml:"addresses" validate:"required"`
-	Username  string   `yaml:"username"`
-	Password  string   `yaml:"password"`
 	APIKey    string   `yaml:"apikey"`
 }
 
@@ -86,9 +84,9 @@ func (c Config) Initialize(ctx context.Context, tracer trace.Tracer) (sources.So
 
 	if c.APIKey != "" {
 		cfg.APIKey = c.APIKey
-	} else if c.Username != "" && c.Password != "" {
-		cfg.Username = c.Username
-		cfg.Password = c.Password
+	} else {
+		// If no API key is provided, we throw an error
+		return nil, fmt.Errorf("elasticsearch source %q requires an API key", c.Name)
 	}
 	client, err := elasticsearch.NewBaseClient(cfg)
 	if err != nil {
