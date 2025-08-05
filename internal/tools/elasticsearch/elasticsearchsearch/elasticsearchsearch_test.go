@@ -1,3 +1,17 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package elasticsearchsearch
 
 import (
@@ -42,7 +56,7 @@ func TestParseFromYamlElasticsearch(t *testing.T) {
 					Source:       "my-elasticsearch-instance",
 					Description:  "Elasticsearch search tool",
 					AuthRequired: []string{},
-					Index:        "my-index",
+					Index:        []string{"my-index"},
 					Query:        "{\n  \"query\": {\n  \"match_all\": {}\n  }\n}\n",
 				},
 			},
@@ -77,7 +91,7 @@ tools:
 					Source:       "my-elasticsearch-instance",
 					Description:  "Elasticsearch search tool with customizable sort",
 					AuthRequired: []string{},
-					Index:        "my-index",
+					Index:        []string{"my-index"},
 					Parameters: tools.Parameters{
 						tools.NewStringParameter("sort", "Sort order for the query"),
 					},
