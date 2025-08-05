@@ -55,6 +55,7 @@ import (
 	_ "github.com/googleapis/genai-toolbox/internal/tools/dataplex/dataplexsearchentries"
 	_ "github.com/googleapis/genai-toolbox/internal/tools/dgraph"
 	_ "github.com/googleapis/genai-toolbox/internal/tools/duckdbsql"
+	_ "github.com/googleapis/genai-toolbox/internal/tools/elasticsearch/elasticsearchesql"
 	_ "github.com/googleapis/genai-toolbox/internal/tools/elasticsearch/elasticsearchsearch"
 	_ "github.com/googleapis/genai-toolbox/internal/tools/firestore/firestoredeletedocuments"
 	_ "github.com/googleapis/genai-toolbox/internal/tools/firestore/firestoregetdocuments"
