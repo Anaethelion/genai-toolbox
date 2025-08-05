@@ -21,7 +21,7 @@ import (
 	"io"
 	"strings"
 
-	yaml "github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml"
 	"github.com/googleapis/genai-toolbox/internal/sources"
 	es "github.com/googleapis/genai-toolbox/internal/sources/elasticsearch"
 	"github.com/googleapis/genai-toolbox/internal/tools"
