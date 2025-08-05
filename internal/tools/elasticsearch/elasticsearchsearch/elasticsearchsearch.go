@@ -80,7 +80,7 @@ type Tool struct {
 	Src         *es.Source
 }
 
-var _ tools.Tool = &Tool{}
+var _ tools.Tool = Tool{}
 
 func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 	src, ok := srcs[c.Source]
@@ -97,7 +97,7 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 		Description: c.Description,
 	}
 
-	return &Tool{
+	return Tool{
 		Name:        c.Name,
 		Kind:        kind,
 		Description: c.Description,
@@ -109,12 +109,13 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 	}, nil
 }
 
-func (t *Tool) Invoke(ctx context.Context, params tools.ParamValues) ([]any, error) {
+func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error) {
 	query := replaceQueryParams(t.Query, t.Parameters, params)
 
 	res, err := esapi.SearchRequest{
-		Index: []string{t.Index},
-		Body:  strings.NewReader(query),
+		Index:      []string{t.Index},
+		Body:       strings.NewReader(query),
+		Instrument: t.Src.Client.InstrumentationEnabled(),
 	}.Do(ctx, t.Src.Client)
 
 	if err != nil {
@@ -134,19 +135,19 @@ func (t *Tool) Invoke(ctx context.Context, params tools.ParamValues) ([]any, err
 	return []any{string(bodyBytes)}, nil
 }
 
-func (t *Tool) ParseParams(data map[string]any, claims map[string]map[string]any) (tools.ParamValues, error) {
+func (t Tool) ParseParams(data map[string]any, claims map[string]map[string]any) (tools.ParamValues, error) {
 	return tools.ParseParams(t.Parameters, data, claims)
 }
 
-func (t *Tool) Manifest() tools.Manifest {
+func (t Tool) Manifest() tools.Manifest {
 	return t.manifest
 }
 
-func (t *Tool) McpManifest() tools.McpManifest {
+func (t Tool) McpManifest() tools.McpManifest {
 	return t.mcpManifest
 }
 
-func (t *Tool) Authorized(verifiedAuthServices []string) bool {
+func (t Tool) Authorized(verifiedAuthServices []string) bool {
 	// For now, always authorized (customize as needed)
 	return true
 }
