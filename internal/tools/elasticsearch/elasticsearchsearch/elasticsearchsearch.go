@@ -47,10 +47,9 @@ type Config struct {
 	Source       string           `yaml:"source" validate:"required"`
 	Description  string           `yaml:"description" validate:"required"`
 	AuthRequired []string         `yaml:"authRequired"`
+	Index        string           `yaml:"index" validate:"required"`
+	Query        string           `yaml:"query" validate:"required"`
 	Parameters   tools.Parameters `yaml:"parameters"`
-
-	Index string `yaml:"index" validate:"required"`
-	Query string `yaml:"query" validate:"required"` // The search query to execute
 }
 
 var _ tools.ToolConfig = Config{}
@@ -68,12 +67,12 @@ func newConfig(ctx context.Context, name string, decoder *yaml.Decoder) (tools.T
 }
 
 type Tool struct {
-	Name        string
-	Kind        string
-	Description string
-	Parameters  tools.Parameters `yaml:"parameters"`
-	Index       string
-	Query       string
+	Name         string           `yaml:"name"`
+	Kind         string           `yaml:"kind"`
+	AuthRequired []string         `yaml:"authRequired"`
+	Parameters   tools.Parameters `yaml:"parameters"`
+	Index        string           `yaml:"index"`
+	Query        string           `yaml:"query"`
 
 	manifest    tools.Manifest
 	mcpManifest tools.McpManifest
@@ -98,14 +97,15 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 	}
 
 	return Tool{
-		Name:        c.Name,
-		Kind:        kind,
-		Description: c.Description,
-		Parameters:  c.Parameters,
-
-		Src:         esSrc,
-		manifest:    tools.Manifest{Description: c.Description, AuthRequired: c.AuthRequired},
-		mcpManifest: mcpManifest,
+		Name:         c.Name,
+		Kind:         kind,
+		Parameters:   c.Parameters,
+		Index:        c.Index,
+		Query:        c.Query,
+		AuthRequired: c.AuthRequired,
+		Src:          esSrc,
+		manifest:     tools.Manifest{Description: c.Description, AuthRequired: c.AuthRequired},
+		mcpManifest:  mcpManifest,
 	}, nil
 }
 
@@ -148,8 +148,7 @@ func (t Tool) McpManifest() tools.McpManifest {
 }
 
 func (t Tool) Authorized(verifiedAuthServices []string) bool {
-	// For now, always authorized (customize as needed)
-	return true
+	return tools.IsAuthorized(t.AuthRequired, verifiedAuthServices)
 }
 
 func replaceQueryParams(query string, params tools.Parameters, paramValues tools.ParamValues) string {
@@ -160,14 +159,14 @@ func replaceQueryParams(query string, params tools.Parameters, paramValues tools
 		typeMap[placeholder] = p.GetType()
 	}
 
-	newQuery := ""
+	newQuery := query
 	// For each parameter, replace its placeholder in the query
 	for placeholder, value := range paramsMap {
 		if typeMap[placeholder] == "array" {
 			// If the parameter is an array, join its values with a comma
-			newQuery += strings.Join(value.([]string), ",") + " "
+			newQuery = strings.ReplaceAll(newQuery, placeholder, fmt.Sprintf("[%s]", strings.Join(value.([]string), ",")))
 		} else {
-			newQuery += fmt.Sprintf("%s ", value)
+			newQuery = strings.ReplaceAll(newQuery, placeholder, fmt.Sprintf("%v", value))
 		}
 	}
 	return newQuery
