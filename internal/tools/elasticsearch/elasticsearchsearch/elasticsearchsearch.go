@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package elasticsearch
+package elasticsearchsearch
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"io"
+	"strings"
 
 	yaml "github.com/goccy/go-yaml"
 	"github.com/googleapis/genai-toolbox/internal/sources"
@@ -43,13 +42,15 @@ type compatibleSource interface {
 var compatibleSources = [...]string{es.SourceKind}
 
 type Config struct {
-	Name        string           `yaml:"name" validate:"required"`
-	Kind        string           `yaml:"kind" validate:"required"`
-	Source      string           `yaml:"source" validate:"required"`
-	Description string           `yaml:"description" validate:"required"`
-	Index       string           `yaml:"index" validate:"required"`
-	Query       map[string]any   `yaml:"query" validate:"required"`
-	Parameters  tools.Parameters `yaml:"parameters"`
+	Name         string           `yaml:"name" validate:"required"`
+	Kind         string           `yaml:"kind" validate:"required"`
+	Source       string           `yaml:"source" validate:"required"`
+	Description  string           `yaml:"description" validate:"required"`
+	AuthRequired []string         `yaml:"authRequired"`
+	Parameters   tools.Parameters `yaml:"parameters"`
+
+	Index string `yaml:"index" validate:"required"`
+	Query string `yaml:"query" validate:"required"` // The search query to execute
 }
 
 var _ tools.ToolConfig = Config{}
@@ -67,16 +68,16 @@ func newConfig(ctx context.Context, name string, decoder *yaml.Decoder) (tools.T
 }
 
 type Tool struct {
-	Name         string
-	Kind         string
-	Description  string
-	Index        string
-	Query        map[string]any
-	Parameters   tools.Parameters
-	AuthRequired []string
-	manifest     tools.Manifest
-	mcpManifest  tools.McpManifest
-	Src          *es.Source
+	Name        string
+	Kind        string
+	Description string
+	Parameters  tools.Parameters `yaml:"parameters"`
+	Index       string
+	Query       string
+
+	manifest    tools.Manifest
+	mcpManifest tools.McpManifest
+	Src         *es.Source
 }
 
 var _ tools.Tool = &Tool{}
@@ -90,27 +91,30 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 	if !ok {
 		return nil, fmt.Errorf("source %q is not elasticsearch", c.Source)
 	}
+
+	mcpManifest := tools.McpManifest{
+		Name:        c.Name,
+		Description: c.Description,
+	}
+
 	return &Tool{
 		Name:        c.Name,
 		Kind:        kind,
 		Description: c.Description,
-		Index:       c.Index,
-		Query:       c.Query,
 		Parameters:  c.Parameters,
+
 		Src:         esSrc,
+		manifest:    tools.Manifest{Description: c.Description, AuthRequired: c.AuthRequired},
+		mcpManifest: mcpManifest,
 	}, nil
 }
 
 func (t *Tool) Invoke(ctx context.Context, params tools.ParamValues) ([]any, error) {
-	// Marshal query to JSON
-	body, err := json.Marshal(t.Query)
-	if err != nil {
-		return nil, err
-	}
+	query := replaceQueryParams(t.Query, t.Parameters, params)
 
 	res, err := esapi.SearchRequest{
 		Index: []string{t.Index},
-		Body:  bytes.NewReader(body),
+		Body:  strings.NewReader(query),
 	}.Do(ctx, t.Src.Client)
 
 	if err != nil {
@@ -122,12 +126,16 @@ func (t *Tool) Invoke(ctx context.Context, params tools.ParamValues) ([]any, err
 	if err != nil {
 		return nil, err
 	}
+
+	if res.IsError() {
+		return nil, fmt.Errorf("[%s] %s", res.Status(), string(bodyBytes))
+	}
+
 	return []any{string(bodyBytes)}, nil
 }
 
 func (t *Tool) ParseParams(data map[string]any, claims map[string]map[string]any) (tools.ParamValues, error) {
-	// For now, just return the input data as params
-	return nil, nil
+	return tools.ParseParams(t.Parameters, data, claims)
 }
 
 func (t *Tool) Manifest() tools.Manifest {
@@ -141,4 +149,25 @@ func (t *Tool) McpManifest() tools.McpManifest {
 func (t *Tool) Authorized(verifiedAuthServices []string) bool {
 	// For now, always authorized (customize as needed)
 	return true
+}
+
+func replaceQueryParams(query string, params tools.Parameters, paramValues tools.ParamValues) string {
+	paramsMap := paramValues.AsMapWithDollarPrefix()
+	typeMap := make(map[string]string, len(params))
+	for _, p := range params {
+		placeholder := "$" + p.GetName()
+		typeMap[placeholder] = p.GetType()
+	}
+
+	newQuery := ""
+	// For each parameter, replace its placeholder in the query
+	for placeholder, value := range paramsMap {
+		if typeMap[placeholder] == "array" {
+			// If the parameter is an array, join its values with a comma
+			newQuery += strings.Join(value.([]string), ",") + " "
+		} else {
+			newQuery += fmt.Sprintf("%s ", value)
+		}
+	}
+	return newQuery
 }
