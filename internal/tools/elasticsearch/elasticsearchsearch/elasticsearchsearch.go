@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/goccy/go-yaml"
 	"github.com/googleapis/genai-toolbox/internal/sources"
@@ -49,6 +50,7 @@ type Config struct {
 	AuthRequired []string         `yaml:"authRequired"`
 	Index        string           `yaml:"index" validate:"required"`
 	Query        string           `yaml:"query" validate:"required"`
+	Timeout      int              `yaml:"timeout"`
 	Parameters   tools.Parameters `yaml:"parameters"`
 }
 
@@ -73,6 +75,7 @@ type Tool struct {
 	Parameters   tools.Parameters `yaml:"parameters"`
 	Index        string           `yaml:"index"`
 	Query        string           `yaml:"query"`
+	Timeout      int              `yaml:"timeout"`
 
 	manifest    tools.Manifest
 	mcpManifest tools.McpManifest
@@ -102,6 +105,7 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 		Parameters:   c.Parameters,
 		Index:        c.Index,
 		Query:        c.Query,
+		Timeout:      c.Timeout,
 		AuthRequired: c.AuthRequired,
 		Src:          esSrc,
 		manifest:     tools.Manifest{Description: c.Description, AuthRequired: c.AuthRequired},
@@ -111,6 +115,15 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 
 func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error) {
 	query := replaceQueryParams(t.Query, t.Parameters, params)
+
+	var cancel context.CancelFunc
+	if t.Timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(t.Timeout)*time.Second)
+		defer cancel()
+	} else {
+		ctx, cancel = context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+	}
 
 	res, err := esapi.SearchRequest{
 		Index:      []string{t.Index},
