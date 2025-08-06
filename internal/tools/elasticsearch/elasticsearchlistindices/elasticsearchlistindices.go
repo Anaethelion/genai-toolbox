@@ -136,7 +136,7 @@ func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error)
 	}
 	defer res.Body.Close()
 
-	result := []any{}
+	var result any
 	dec := json.NewDecoder(res.Body)
 	err = dec.Decode(&result)
 	if err != nil {
