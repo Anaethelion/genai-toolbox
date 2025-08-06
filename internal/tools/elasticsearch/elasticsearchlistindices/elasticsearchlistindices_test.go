@@ -15,11 +15,12 @@
 package elasticsearchlistindices
 
 import (
+	"testing"
+
 	"github.com/goccy/go-yaml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/googleapis/genai-toolbox/internal/server"
 	"github.com/googleapis/genai-toolbox/internal/testutils"
-	"testing"
 )
 
 func TestParseFromYamlElasticsearch(t *testing.T) {
@@ -40,8 +41,6 @@ func TestParseFromYamlElasticsearch(t *testing.T) {
 				kind: elasticsearch-list-indices
 				source: my-elasticsearch-instance
 				description: Elasticsearch search tool
-				indices: 
-					- "my-index"
 		`,
 			want: server.ToolConfigs{
 				"example_tool": Config{
@@ -50,7 +49,6 @@ func TestParseFromYamlElasticsearch(t *testing.T) {
 					Source:       "my-elasticsearch-instance",
 					Description:  "Elasticsearch search tool",
 					AuthRequired: []string{},
-					Indices:      []string{"my-index"},
 				},
 			},
 		},

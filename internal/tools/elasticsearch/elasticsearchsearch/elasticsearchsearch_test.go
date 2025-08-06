@@ -15,12 +15,13 @@
 package elasticsearchsearch
 
 import (
+	"testing"
+
 	"github.com/goccy/go-yaml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/googleapis/genai-toolbox/internal/server"
 	"github.com/googleapis/genai-toolbox/internal/testutils"
 	"github.com/googleapis/genai-toolbox/internal/tools"
-	"testing"
 )
 
 func TestParseFromYamlElasticsearch(t *testing.T) {
@@ -41,8 +42,6 @@ func TestParseFromYamlElasticsearch(t *testing.T) {
 				kind: elasticsearch-search
 				source: my-elasticsearch-instance
 				description: Elasticsearch search tool
-				indices: 
-					- "my-index"
 				query: |
 				  {
 					  "query": {
@@ -57,7 +56,6 @@ func TestParseFromYamlElasticsearch(t *testing.T) {
 					Source:       "my-elasticsearch-instance",
 					Description:  "Elasticsearch search tool",
 					AuthRequired: []string{},
-					Indices:      []string{"my-index"},
 					Query:        "{\n  \"query\": {\n  \"match_all\": {}\n  }\n}\n",
 				},
 			},
@@ -70,8 +68,6 @@ tools:
 		kind: elasticsearch-search
 		source: my-elasticsearch-instance
 		description: Elasticsearch search tool with customizable sort
-		indices:
-			- "my-index"
 		parameters:
 			- name: sort
 			  type: string
@@ -93,7 +89,6 @@ tools:
 					Source:       "my-elasticsearch-instance",
 					Description:  "Elasticsearch search tool with customizable sort",
 					AuthRequired: []string{},
-					Indices:      []string{"my-index"},
 					Parameters: tools.Parameters{
 						tools.NewStringParameter("sort", "Sort order for the query"),
 					},
