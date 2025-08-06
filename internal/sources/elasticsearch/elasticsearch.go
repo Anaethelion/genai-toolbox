@@ -17,12 +17,14 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/elastic/elastic-transport-go/v8/elastictransport"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/goccy/go-yaml"
 	"github.com/googleapis/genai-toolbox/internal/sources"
+	"github.com/googleapis/genai-toolbox/internal/util"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -84,10 +86,16 @@ func (t *tracerProviderAdapter) Tracer(name string, options ...trace.TracerOptio
 func (c Config) Initialize(ctx context.Context, tracer trace.Tracer) (sources.Source, error) {
 	tracerProvider := &tracerProviderAdapter{tracer: tracer}
 
+	ua, err := util.UserAgentFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting user agent from context: %w", err)
+	}
+
 	// Create a new Elasticsearch client with the provided configuration
 	cfg := elasticsearch.Config{
 		Addresses:       c.Addresses,
 		Instrumentation: elasticsearch.NewOpenTelemetryInstrumentation(tracerProvider, false),
+		Header:          http.Header{"User-Agent": []string{ua + " go-elasticsearch/" + elasticsearch.Version}},
 	}
 
 	if c.APIKey != "" {
