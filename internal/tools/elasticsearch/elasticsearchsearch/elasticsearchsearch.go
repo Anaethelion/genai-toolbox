@@ -39,8 +39,10 @@ func init() {
 }
 
 type compatibleSource interface {
-	// Add methods if needed for more tool types
+	ElasticsearchClient() es.EsClient
 }
+
+var _ compatibleSource = &es.Source{}
 
 var compatibleSources = [...]string{es.SourceKind}
 
@@ -79,19 +81,22 @@ type Tool struct {
 
 	manifest    tools.Manifest
 	mcpManifest tools.McpManifest
-	Src         *es.Source
+	EsClient    es.EsClient
 }
 
 var _ tools.Tool = Tool{}
 
 func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
+	// verify source exists
 	src, ok := srcs[c.Source]
 	if !ok {
 		return nil, fmt.Errorf("source %q not found", c.Source)
 	}
-	esSrc, ok := src.(*es.Source)
+
+	// verify the source is compatible
+	s, ok := src.(compatibleSource)
 	if !ok {
-		return nil, fmt.Errorf("source %q is not elasticsearch", c.Source)
+		return nil, fmt.Errorf("invalid source for %q tool: source kind must be one of %q", kind, compatibleSources)
 	}
 
 	mcpManifest := tools.McpManifest{
@@ -107,7 +112,7 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 		Query:        c.Query,
 		Timeout:      c.Timeout,
 		AuthRequired: c.AuthRequired,
-		Src:          esSrc,
+		EsClient:     s.ElasticsearchClient(),
 		manifest:     tools.Manifest{Description: c.Description, Parameters: c.Parameters.Manifest(), AuthRequired: c.AuthRequired},
 		mcpManifest:  mcpManifest,
 	}, nil
@@ -133,8 +138,8 @@ func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error)
 	res, err := esapi.SearchRequest{
 		Index:      indices,
 		Body:       strings.NewReader(query),
-		Instrument: t.Src.Client.InstrumentationEnabled(),
-	}.Do(ctx, t.Src.Client)
+		Instrument: t.EsClient.InstrumentationEnabled(),
+	}.Do(ctx, t.EsClient)
 
 	if err != nil {
 		return nil, err
