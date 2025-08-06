@@ -16,12 +16,12 @@ package elasticsearchsearch
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"github.com/googleapis/genai-toolbox/internal/util"
 
 	"github.com/goccy/go-yaml"
 	"github.com/googleapis/genai-toolbox/internal/sources"
@@ -147,8 +147,7 @@ func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error)
 	defer res.Body.Close()
 
 	var result any
-	dec := json.NewDecoder(res.Body)
-	err = dec.Decode(&result)
+	err = util.DecodeJSON(res.Body, &result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode response body: %w", err)
 	}
