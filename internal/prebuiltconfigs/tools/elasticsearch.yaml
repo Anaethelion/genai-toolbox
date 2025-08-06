@@ -64,11 +64,16 @@ tools:
       - name: index
         type: string
         description: The index to search in.
+      - name: count
+        type: integer
+        description: The number of documents to return.
+        default: 10
     query: |
       {
         "query": {
           "match_all": {}
-        }
+        },
+        "size": $count
       }
 
 toolsets:
