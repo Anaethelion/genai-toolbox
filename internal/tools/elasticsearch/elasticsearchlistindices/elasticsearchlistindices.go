@@ -46,7 +46,6 @@ type Config struct {
 	Kind         string           `yaml:"kind" validate:"required"`
 	Source       string           `yaml:"source" validate:"required"`
 	Description  string           `yaml:"description" validate:"required"`
-	Indices      []string         `yaml:"indices"`
 	Timeout      int              `yaml:"timeout"`
 	AuthRequired []string         `yaml:"authRequired"`
 	Parameters   tools.Parameters `yaml:"parameters"`
@@ -70,7 +69,6 @@ type Tool struct {
 	Name         string           `yaml:"name"`
 	Kind         string           `yaml:"kind"`
 	AuthRequired []string         `yaml:"authRequired"`
-	Indices      []string         `yaml:"indices"`
 	Timeout      int              `yaml:"timeout"`
 	Parameters   tools.Parameters `yaml:"parameters"`
 
@@ -94,6 +92,7 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 	mcpManifest := tools.McpManifest{
 		Name:        c.Name,
 		Description: c.Description,
+		InputSchema: c.Parameters.McpManifest(),
 	}
 
 	return Tool{
@@ -118,8 +117,13 @@ func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error)
 		defer cancel()
 	}
 
+	indices, err := t.RetrieveIndices(params)
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := esapi.CatIndicesRequest{
-		Index:      t.Indices,
+		Index:      indices,
 		H:          []string{"index", "status", "docs.count"},
 		Format:     "json",
 		Instrument: t.Src.Client.InstrumentationEnabled(),
@@ -156,4 +160,22 @@ func (t Tool) McpManifest() tools.McpManifest {
 
 func (t Tool) Authorized(verifiedAuthServices []string) bool {
 	return tools.IsAuthorized(t.AuthRequired, verifiedAuthServices)
+}
+
+// RetrieveIndices extracts the indices from the provided parameters.
+func (t Tool) RetrieveIndices(params tools.ParamValues) ([]string, error) {
+	paramsMap := params.AsMap()
+	anyIndices, ok := paramsMap["indices"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("missing required parameter: indices, got %T", paramsMap["indices"])
+	}
+	var indices []string
+	for _, index := range anyIndices {
+		if str, ok := index.(string); ok {
+			indices = append(indices, str)
+		} else {
+			return nil, fmt.Errorf("invalid type for indices: expected []string, got %T", index)
+		}
+	}
+	return indices, nil
 }

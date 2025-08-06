@@ -69,12 +69,12 @@ type Tool struct {
 	Name         string           `yaml:"name"`
 	Kind         string           `yaml:"kind"`
 	AuthRequired []string         `yaml:"authRequired"`
-	Timeout      int              `yaml:"timeout"`
 	Parameters   tools.Parameters `yaml:"parameters"`
 
+	Src         *es.Source
+	Timeout     int `yaml:"timeout"`
 	manifest    tools.Manifest
 	mcpManifest tools.McpManifest
-	Src         *es.Source
 }
 
 var _ tools.Tool = Tool{}
@@ -92,6 +92,7 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 	mcpManifest := tools.McpManifest{
 		Name:        c.Name,
 		Description: c.Description,
+		InputSchema: c.Parameters.McpManifest(),
 	}
 
 	return Tool{
@@ -116,10 +117,9 @@ func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error)
 		defer cancel()
 	}
 
-	paramsMap := params.AsMap()
-	indices, ok := paramsMap["indices"].([]string)
-	if !ok {
-		return nil, fmt.Errorf("missing required parameter: indices, got %T", paramsMap["indices"])
+	indices, err := t.RetrieveIndices(params)
+	if err != nil {
+		return nil, err
 	}
 
 	res, err := esapi.IndicesGetMappingRequest{
@@ -158,4 +158,22 @@ func (t Tool) McpManifest() tools.McpManifest {
 
 func (t Tool) Authorized(verifiedAuthServices []string) bool {
 	return tools.IsAuthorized(t.AuthRequired, verifiedAuthServices)
+}
+
+// RetrieveIndices extracts the indices from the provided parameters.
+func (t Tool) RetrieveIndices(params tools.ParamValues) ([]string, error) {
+	paramsMap := params.AsMap()
+	anyIndices, ok := paramsMap["indices"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("missing required parameter: indices, got %T", paramsMap["indices"])
+	}
+	var indices []string
+	for _, index := range anyIndices {
+		if str, ok := index.(string); ok {
+			indices = append(indices, str)
+		} else {
+			return nil, fmt.Errorf("invalid type for indices: expected []string, got %T", index)
+		}
+	}
+	return indices, nil
 }

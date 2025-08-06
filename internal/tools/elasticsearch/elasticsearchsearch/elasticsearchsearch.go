@@ -97,6 +97,7 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 	mcpManifest := tools.McpManifest{
 		Name:        c.Name,
 		Description: c.Description,
+		InputSchema: c.Parameters.McpManifest(),
 	}
 
 	return Tool{
@@ -177,7 +178,7 @@ func replaceQueryParams(query string, params tools.Parameters, paramValues tools
 	for placeholder, value := range paramsMap {
 		if typeMap[placeholder] == "array" {
 			// If the parameter is an array, join its values with a comma
-			newQuery = strings.ReplaceAll(newQuery, placeholder, fmt.Sprintf("[%s]", strings.Join(value.([]string), ",")))
+			newQuery = strings.ReplaceAll(newQuery, placeholder, fmt.Sprintf("%s", strings.Join(value.([]string), ",")))
 		} else {
 			newQuery = strings.ReplaceAll(newQuery, placeholder, fmt.Sprintf("%v", value))
 		}

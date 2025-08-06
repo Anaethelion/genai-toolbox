@@ -99,6 +99,7 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 	mcpManifest := tools.McpManifest{
 		Name:        c.Name,
 		Description: c.Description,
+		InputSchema: c.Parameters.McpManifest(),
 	}
 
 	return Tool{
