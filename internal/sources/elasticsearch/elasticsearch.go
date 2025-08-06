@@ -17,6 +17,8 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
+
+	"github.com/elastic/elastic-transport-go/v8/elastictransport"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/goccy/go-yaml"
@@ -54,10 +56,15 @@ func (c Config) SourceConfigKind() string {
 	return SourceKind
 }
 
+type EsClient interface {
+	esapi.Transport
+	elastictransport.Instrumented
+}
+
 type Source struct {
 	Name   string
 	Kind   string
-	Client *elasticsearch.BaseClient
+	Client EsClient
 }
 
 var _ sources.Source = &Source{}
@@ -119,4 +126,8 @@ func (c Config) Initialize(ctx context.Context, tracer trace.Tracer) (sources.So
 // SourceKind returns the kind string for this source.
 func (s *Source) SourceKind() string {
 	return SourceKind
+}
+
+func (s *Source) ElasticsearchClient() EsClient {
+	return s.Client
 }
