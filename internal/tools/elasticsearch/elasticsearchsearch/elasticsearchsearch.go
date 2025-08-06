@@ -48,7 +48,7 @@ type Config struct {
 	Source       string           `yaml:"source" validate:"required"`
 	Description  string           `yaml:"description" validate:"required"`
 	AuthRequired []string         `yaml:"authRequired"`
-	Index        []string         `yaml:"index"`
+	Indices      []string         `yaml:"indices"`
 	Query        string           `yaml:"query" validate:"required"`
 	Timeout      int              `yaml:"timeout"`
 	Parameters   tools.Parameters `yaml:"parameters"`
@@ -73,7 +73,7 @@ type Tool struct {
 	Kind         string           `yaml:"kind"`
 	AuthRequired []string         `yaml:"authRequired"`
 	Parameters   tools.Parameters `yaml:"parameters"`
-	Index        []string         `yaml:"index"`
+	Indices      []string         `yaml:"indices"`
 	Query        string           `yaml:"query"`
 	Timeout      int              `yaml:"timeout"`
 
@@ -103,7 +103,7 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 		Name:         c.Name,
 		Kind:         kind,
 		Parameters:   c.Parameters,
-		Index:        c.Index,
+		Indices:      c.Indices,
 		Query:        c.Query,
 		Timeout:      c.Timeout,
 		AuthRequired: c.AuthRequired,
@@ -126,7 +126,7 @@ func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error)
 	}
 
 	res, err := esapi.SearchRequest{
-		Index:      t.Index,
+		Index:      t.Indices,
 		Body:       strings.NewReader(query),
 		Instrument: t.Src.Client.InstrumentationEnabled(),
 	}.Do(ctx, t.Src.Client)

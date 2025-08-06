@@ -41,7 +41,8 @@ func TestParseFromYamlElasticsearch(t *testing.T) {
 				kind: elasticsearch-search
 				source: my-elasticsearch-instance
 				description: Elasticsearch search tool
-				index: "my-index"
+				indices: 
+					- "my-index"
 				query: |
 				  {
 					  "query": {
@@ -56,7 +57,7 @@ func TestParseFromYamlElasticsearch(t *testing.T) {
 					Source:       "my-elasticsearch-instance",
 					Description:  "Elasticsearch search tool",
 					AuthRequired: []string{},
-					Index:        []string{"my-index"},
+					Indices:      []string{"my-index"},
 					Query:        "{\n  \"query\": {\n  \"match_all\": {}\n  }\n}\n",
 				},
 			},
@@ -69,7 +70,8 @@ tools:
 		kind: elasticsearch-search
 		source: my-elasticsearch-instance
 		description: Elasticsearch search tool with customizable sort
-		index: "my-index"
+		indices:
+			- "my-index"
 		parameters:
 			- name: sort
 			  type: string
@@ -91,7 +93,7 @@ tools:
 					Source:       "my-elasticsearch-instance",
 					Description:  "Elasticsearch search tool with customizable sort",
 					AuthRequired: []string{},
-					Index:        []string{"my-index"},
+					Indices:      []string{"my-index"},
 					Parameters: tools.Parameters{
 						tools.NewStringParameter("sort", "Sort order for the query"),
 					},
