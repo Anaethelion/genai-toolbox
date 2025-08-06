@@ -53,6 +53,14 @@ func ReplaceQueryParams(query string, params tools.Parameters, paramValues tools
 // RetrieveIndices extracts the indices from the provided parameters.
 func RetrieveIndices(params tools.ParamValues) ([]string, error) {
 	paramsMap := params.AsMap()
+	index, ok := paramsMap["index"]
+	if ok {
+		if str, ok := index.(string); ok {
+			return []string{str}, nil
+		}
+		return nil, fmt.Errorf("invalid type for index: expected string, got %T", index)
+	}
+
 	anyIndices, ok := paramsMap["indices"].([]any)
 	if !ok {
 		return nil, fmt.Errorf("missing required parameter: indices, got %T", paramsMap["indices"])
