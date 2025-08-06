@@ -102,7 +102,7 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 		Timeout:      c.Timeout,
 		AuthRequired: c.AuthRequired,
 		Src:          esSrc,
-		manifest:     tools.Manifest{Description: c.Description, AuthRequired: c.AuthRequired},
+		manifest:     tools.Manifest{Description: c.Description, Parameters: c.Parameters.Manifest(), AuthRequired: c.AuthRequired},
 		mcpManifest:  mcpManifest,
 	}, nil
 }
