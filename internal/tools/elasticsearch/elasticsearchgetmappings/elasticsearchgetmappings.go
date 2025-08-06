@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	estools "github.com/googleapis/genai-toolbox/internal/tools/elasticsearch"
 
 	"github.com/goccy/go-yaml"
 	"github.com/googleapis/genai-toolbox/internal/sources"
@@ -118,7 +119,7 @@ func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error)
 		defer cancel()
 	}
 
-	indices, err := t.RetrieveIndices(params)
+	indices, err := estools.RetrieveIndices(params)
 	if err != nil {
 		return nil, err
 	}
@@ -157,22 +158,4 @@ func (t Tool) McpManifest() tools.McpManifest {
 
 func (t Tool) Authorized(verifiedAuthServices []string) bool {
 	return tools.IsAuthorized(t.AuthRequired, verifiedAuthServices)
-}
-
-// RetrieveIndices extracts the indices from the provided parameters.
-func (t Tool) RetrieveIndices(params tools.ParamValues) ([]string, error) {
-	paramsMap := params.AsMap()
-	anyIndices, ok := paramsMap["indices"].([]any)
-	if !ok {
-		return nil, fmt.Errorf("missing required parameter: indices, got %T", paramsMap["indices"])
-	}
-	var indices []string
-	for _, index := range anyIndices {
-		if str, ok := index.(string); ok {
-			indices = append(indices, str)
-		} else {
-			return nil, fmt.Errorf("invalid type for indices: expected []string, got %T", index)
-		}
-	}
-	return indices, nil
 }

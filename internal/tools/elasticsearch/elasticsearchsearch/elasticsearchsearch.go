@@ -27,6 +27,7 @@ import (
 	"github.com/googleapis/genai-toolbox/internal/sources"
 	es "github.com/googleapis/genai-toolbox/internal/sources/elasticsearch"
 	"github.com/googleapis/genai-toolbox/internal/tools"
+	estools "github.com/googleapis/genai-toolbox/internal/tools/elasticsearch"
 )
 
 const kind string = "elasticsearch-search"
@@ -49,7 +50,6 @@ type Config struct {
 	Source       string           `yaml:"source" validate:"required"`
 	Description  string           `yaml:"description" validate:"required"`
 	AuthRequired []string         `yaml:"authRequired"`
-	Indices      []string         `yaml:"indices"`
 	Query        string           `yaml:"query" validate:"required"`
 	Timeout      int              `yaml:"timeout"`
 	Parameters   tools.Parameters `yaml:"parameters"`
@@ -74,7 +74,6 @@ type Tool struct {
 	Kind         string           `yaml:"kind"`
 	AuthRequired []string         `yaml:"authRequired"`
 	Parameters   tools.Parameters `yaml:"parameters"`
-	Indices      []string         `yaml:"indices"`
 	Query        string           `yaml:"query"`
 	Timeout      int              `yaml:"timeout"`
 
@@ -105,7 +104,6 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 		Name:         c.Name,
 		Kind:         kind,
 		Parameters:   c.Parameters,
-		Indices:      c.Indices,
 		Query:        c.Query,
 		Timeout:      c.Timeout,
 		AuthRequired: c.AuthRequired,
@@ -116,7 +114,12 @@ func (c Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error) {
 }
 
 func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error) {
-	query := replaceQueryParams(t.Query, t.Parameters, params)
+	indices, err := estools.RetrieveIndices(params)
+	if err != nil {
+		return nil, err
+	}
+
+	query := estools.ReplaceQueryParams(t.Query, t.Parameters, params)
 
 	var cancel context.CancelFunc
 	if t.Timeout > 0 {
@@ -128,7 +131,7 @@ func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error)
 	}
 
 	res, err := esapi.SearchRequest{
-		Index:      t.Indices,
+		Index:      indices,
 		Body:       strings.NewReader(query),
 		Instrument: t.Src.Client.InstrumentationEnabled(),
 	}.Do(ctx, t.Src.Client)
@@ -162,25 +165,4 @@ func (t Tool) McpManifest() tools.McpManifest {
 
 func (t Tool) Authorized(verifiedAuthServices []string) bool {
 	return tools.IsAuthorized(t.AuthRequired, verifiedAuthServices)
-}
-
-func replaceQueryParams(query string, params tools.Parameters, paramValues tools.ParamValues) string {
-	paramsMap := paramValues.AsMapWithDollarPrefix()
-	typeMap := make(map[string]string, len(params))
-	for _, p := range params {
-		placeholder := "$" + p.GetName()
-		typeMap[placeholder] = p.GetType()
-	}
-
-	newQuery := query
-	// For each parameter, replace its placeholder in the query
-	for placeholder, value := range paramsMap {
-		if typeMap[placeholder] == "array" {
-			// If the parameter is an array, join its values with a comma
-			newQuery = strings.ReplaceAll(newQuery, placeholder, fmt.Sprintf("%s", strings.Join(value.([]string), ",")))
-		} else {
-			newQuery = strings.ReplaceAll(newQuery, placeholder, fmt.Sprintf("%v", value))
-		}
-	}
-	return newQuery
 }
