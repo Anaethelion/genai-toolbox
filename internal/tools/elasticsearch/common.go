@@ -15,6 +15,7 @@
 package elasticsearch
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -48,6 +49,21 @@ func ReplaceQueryParams(query string, params tools.Parameters, paramValues tools
 		}
 	}
 	return newQuery
+}
+
+// ReplaceQueryDSLParams replaces the placeholders in the DSL query string with the actual values from the parameters.
+func ReplaceQueryDSLParams(query string, params tools.Parameters, paramValues tools.ParamValues) (string, error) {
+	paramsMap := paramValues.AsMapWithDollarPrefix()
+	newQuery := query
+	// For each parameter, replace its placeholder in the query
+	for placeholder, value := range paramsMap {
+		data, err := json.Marshal(value)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal value for placeholder %s: %w", placeholder, err)
+		}
+		newQuery = strings.ReplaceAll(newQuery, placeholder, fmt.Sprintf("%v", string(data)))
+	}
+	return newQuery, nil
 }
 
 // RetrieveIndices extracts the indices from the provided parameters.

@@ -124,7 +124,10 @@ func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) (any, error)
 		return nil, err
 	}
 
-	query := estools.ReplaceQueryParams(t.Query, t.Parameters, params)
+	query, err := estools.ReplaceQueryDSLParams(t.Query, t.Parameters, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to replace query DSL parameters: %w", err)
+	}
 
 	var cancel context.CancelFunc
 	if t.Timeout > 0 {

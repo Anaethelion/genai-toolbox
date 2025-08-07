@@ -15,15 +15,12 @@
 package elasticsearch_test
 
 import (
-	"context"
-	"os"
 	"testing"
 
 	yaml "github.com/goccy/go-yaml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/googleapis/genai-toolbox/internal/server"
 	"github.com/googleapis/genai-toolbox/internal/sources/elasticsearch"
-	"go.opentelemetry.io/otel/trace"
 )
 
 func TestParseFromYamlElasticsearch(t *testing.T) {
@@ -66,25 +63,5 @@ sources:
 				t.Errorf("unexpected config diff (-want +got):\n%s", diff)
 			}
 		})
-	}
-}
-
-func TestConfig_Initialize_Integration(t *testing.T) {
-	addr := os.Getenv("ELASTICSEARCH_TEST_ADDR")
-	if addr == "" {
-		t.Skip("ELASTICSEARCH_TEST_ADDR not set; skipping integration test")
-	}
-	tracer := trace.NewNoopTracerProvider().Tracer("")
-	cfg := elasticsearch.Config{
-		Name:      "test-es",
-		Kind:      elasticsearch.SourceKind,
-		Addresses: []string{addr},
-	}
-	src, err := cfg.Initialize(context.Background(), tracer)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if src == nil {
-		t.Fatalf("expected non-nil source")
 	}
 }

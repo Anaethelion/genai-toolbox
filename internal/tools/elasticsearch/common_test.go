@@ -48,7 +48,7 @@ func TestReplaceQueryParams(t *testing.T) {
 			want: "FROM some-index | KEEP some-field | SORT some-field DESC",
 		},
 		{
-			name: "array replacement",
+			name: "string array replacement",
 			args: args{
 				query: "FROM $indices | KEEP $field | SORT $field DESC",
 				params: tools.Parameters{
@@ -189,6 +189,61 @@ func TestRetrieveIndices(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("RetrieveIndices() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReplaceQueryDSLParams(t *testing.T) {
+	type args struct {
+		query       string
+		params      tools.Parameters
+		paramValues tools.ParamValues
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "basic replacement",
+			args: args{
+				query: `{"query":{"match":{"field":$field}}}`,
+				params: tools.Parameters{
+					tools.NewStringParameter("field", "field name"),
+				},
+				paramValues: tools.ParamValues{
+					{Name: "field", Value: "some-field"},
+				},
+			},
+			want:    `{"query":{"match":{"field":"some-field"}}}`,
+			wantErr: false,
+		},
+		{
+			name: "array replacement",
+			args: args{
+				query: `{"query":{"terms":{"field":$fields}}}`,
+				params: tools.Parameters{
+					tools.NewStringParameter("fields", "fields names"),
+				},
+				paramValues: tools.ParamValues{
+					{Name: "fields", Value: []string{"field1", "field2"}},
+				},
+			},
+			want:    `{"query":{"terms":{"field":["field1","field2"]}}}`,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ReplaceQueryDSLParams(tt.args.query, tt.args.params, tt.args.paramValues)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReplaceQueryDSLParams() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("ReplaceQueryDSLParams() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
